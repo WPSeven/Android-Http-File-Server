@@ -33,7 +33,6 @@ import androidx.core.content.ContextCompat
 
 
 class MainActivity : ComponentActivity() {
-    private var httpServer: HttpServer? = null
     private val viewModel: MainViewModel by viewModels()
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -56,7 +55,8 @@ class MainActivity : ComponentActivity() {
                         ipAddress = getWifiIpAddress(),
                         onPortChange = viewModel::updatePort,
                         onServerToggle = { isStarted ->
-                            if (isStarted) stopServer() else startServer()
+                            if (isStarted) viewModel.stopServer()
+                            else viewModel.startServer(this)
                         },
                         onSelectFile = { startFilePicker() }
                     )
@@ -67,45 +67,6 @@ class MainActivity : ComponentActivity() {
         //setupHttpServer()
     }
 
-    private fun startServer() {
-        try {
-            httpServer = HttpServer(this, viewModel.port.value).apply {
-                setOnStatusUpdateListener(object : HttpServer.OnStatusUpdateListener {
-                    override fun onUploadingProgressUpdate(progress: Int) {
-                        viewModel.updateProgress(progress)
-                    }
-
-                    override fun onUploadingFile(file: File, done: Boolean) {
-                        viewModel.updateUploadState(
-                            if (done) "Upload file ${file.name} done!"
-                            else "Uploading file ${file.name}..."
-                        )
-                        if (!done) viewModel.updateProgress(0)
-                    }
-
-                    override fun onDownloadingFile(file: File, done: Boolean) {
-                        viewModel.updateDownloadState(
-                            if (done) "Download file ${file.name} done!"
-                            else "Downloading file ${file.name}..."
-                        )
-                    }
-                })
-                start()
-            }
-            viewModel.updateServerState(true)
-        } catch (e: Exception) {
-            e.printStackTrace()
-        }
-
-
-    }
-
-
-    private fun stopServer() {
-        httpServer?.stop()
-        httpServer = null
-        viewModel.updateServerState(false)
-    }
 
     private fun startFilePicker() {
         val intent = Intent(Intent.ACTION_GET_CONTENT).apply {
@@ -153,7 +114,7 @@ class MainActivity : ComponentActivity() {
     }*/
 
     override fun onDestroy() {
-        stopServer()
+        viewModel.stopServer()
         super.onDestroy()
     }
 }

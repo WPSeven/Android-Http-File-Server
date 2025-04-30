@@ -1,12 +1,16 @@
 package com.waiphyo.androidhttpfileserver
 
+import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import java.io.File
 
 class MainViewModel : ViewModel() {
+
+    private var httpServer: HttpServer? = null
 
 
     private val _serverState = MutableStateFlow(false)
@@ -56,5 +60,47 @@ class MainViewModel : ViewModel() {
 
 
 
+
+    fun startServer(context: Context) {
+        try {
+            httpServer = HttpServer(context, port.value).apply {
+                setOnStatusUpdateListener(object : HttpServer.OnStatusUpdateListener {
+                    override fun onUploadingProgressUpdate(progress: Int) {
+                        updateProgress(progress)
+                    }
+
+                    override fun onUploadingFile(file: File, done: Boolean) {
+                        updateUploadState(
+                            if (done) "Upload file ${file.name} done!"
+                            else "Uploading file ${file.name}..."
+                        )
+                        if (!done) updateProgress(0)
+                    }
+
+                    override fun onDownloadingFile(file: File, done: Boolean) {
+                        updateDownloadState(
+                            if (done) "Download file ${file.name} done!"
+                            else "Downloading file ${file.name}..."
+                        )
+                    }
+                })
+                start()
+            }
+            updateServerState(true)
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+    }
+
+    fun stopServer() {
+        httpServer?.stop()
+        httpServer = null
+        updateServerState(false)
+    }
+
+    override fun onCleared() {
+        stopServer()
+        super.onCleared()
+    }
 
 }
